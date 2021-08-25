@@ -1,0 +1,101 @@
+{
+    "max_open_trades": 4,
+    "stake_currency": "BUSD",
+    "stake_amount" : "unlimited",
+    "amend_last_stake_amount ": true,
+    "tradable_balance_ratio": 0.99,
+    "fiat_display_currency": "USD",
+    "dry_run": true,
+    "dry_run_wallet": 70,
+    "cancel_open_orders_on_exit": false,
+    "ignore_buying_expired_candle_after" : 90,
+    "unfilledtimeout": {
+        "buy": 30,
+        "sell": 10,
+        "unit": "seconds"
+    },
+    "order_types": {
+        "buy": "market",
+        "sell": "market",
+        "forcesell": "market",
+        "emergencysell": "market",
+        "trailing_stop_loss": "market",
+        "stoploss": "market",
+        "stoploss_on_exchange": false,
+        "stoploss_on_exchange_interval": 60
+    },
+    "bid_strategy": {
+        "price_side": "ask",
+        "ask_last_balance": 0.0,
+        "use_order_book": false,
+        "order_book_top": 1,
+        "check_depth_of_market": {
+            "enabled": false,
+            "bids_to_ask_delta": 1
+        }
+    },
+    "ask_strategy": {
+        "price_side": "bid",
+        "use_order_book": false,
+        "order_book_min": 1,
+        "order_book_max": 1
+    },
+    "pairlists": [
+        {
+            "method": "VolumePairList",
+            "number_assets": 60,
+            "sort_key": "quoteVolume"
+        },
+        {"method": "AgeFilter", "min_days_listed": 30},
+        {
+            "method": "VolatilityFilter",
+            "lookback_days": 4,
+            "min_volatility": 0.02,
+            "max_volatility": 0.75,
+            "refresh_period": 36000
+        },
+        {"method": "SpreadFilter", "max_spread_ratio": 0.005},
+        {
+            "method": "RangeStabilityFilter",
+            "lookback_days": 3,
+            "min_rate_of_change": 0.1,
+            "refresh_period": 1440
+        },
+        {"method": "PerformanceFilter"},
+        {"method": "PriceFilter", "low_price_ratio": 0.001}
+    ],
+    "edge": {
+        "enabled": false,
+        "process_throttle_secs": 3600,
+        "calculate_since_number_of_days": 7,
+        "allowed_risk": 0.01,
+        "stoploss_range_min": -0.01,
+        "stoploss_range_max": -0.1,
+        "stoploss_range_step": -0.01,
+        "minimum_winrate": 0.60,
+        "minimum_expectancy": 0.10,
+        "min_trade_number": 10,
+        "max_trade_duration_minute": 1440,
+        "remove_pumps": false
+    },
+    "api_server": {
+        "enabled": false,
+        "listen_ip_address": "0.0.0.0",
+        "listen_port": 8080,
+        "verbosity": "error",
+        "jwt_secret_key": "00",
+        "CORS_origins": [],
+        "username": "11",
+        "password": "22"
+    },
+    "bot_name": "freqtrade_bot",
+    "initial_state": "running",
+    "forcebuy_enable": false,
+    "internals": {
+        "process_throttle_secs": 2
+    },
+    "db_url": "sqlite:////freqtrade/user_data/tradesv3.sqlite",
+    "user_data_dir" : "user_data",
+    "strategy": "SampleStrategy",
+    "strategy_path": "user_data/strategies"
+}
