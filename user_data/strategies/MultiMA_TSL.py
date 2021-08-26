@@ -3,7 +3,7 @@ import numpy as np
 import talib.abstract as ta
 from freqtrade.strategy.interface import IStrategy
 from freqtrade.strategy import (merge_informative_pair,
-                                DecimalParameter, IntParameter, CategoricalParameter, stoploss_from_open)
+                                DecimalParameter, IntParameter, CategoricalParameter)
 from pandas import DataFrame
 from functools import reduce
 from freqtrade.persistence import Trade
@@ -105,40 +105,23 @@ class MultiMA_TSL(IStrategy):
     # Number of candles the strategy requires before producing valid signals
     startup_candle_count: int = 300
 
-    # trailing stoploss hyperopt parameters
-    # hard stoploss profit
-    pHSL = DecimalParameter(-0.200, -0.040, default=-0.15, decimals=3, space='sell', optimize=False, load=True)
-    # profit threshold 1, trigger point, SL_1 is used
-    pPF_1 = DecimalParameter(0.008, 0.020, default=0.018, decimals=3, space='sell', optimize=False, load=True)
-    pSL_1 = DecimalParameter(0.008, 0.020, default=0.013, decimals=3, space='sell', optimize=False, load=True)
-
-    # profit threshold 2, SL_2 is used
-    pPF_2 = DecimalParameter(0.040, 0.100, default=0.080, decimals=3, space='sell', optimize=False, load=True)
-    pSL_2 = DecimalParameter(0.020, 0.070, default=0.040, decimals=3, space='sell', optimize=False, load=True)
-
-    # Custom Trailing Stoploss by Perkmeister
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float, **kwargs) -> float:
 
-        # hard stoploss profit
-        HSL = self.pHSL.value
-        PF_1 = self.pPF_1.value
-        SL_1 = self.pSL_1.value
-        PF_2 = self.pPF_2.value
-        SL_2 = self.pSL_2.value
+        if (current_profit > 0.3):
+            return 0.05
+        elif (current_profit > 0.2):
+            return 0.04
+        elif (current_profit > 0.1):
+            return 0.03
+        elif (current_profit > 0.06):
+            return 0.02
+        elif (current_profit > 0.03):
+            return 0.01
+        elif (current_profit > 0.018):
+            return 0.005
 
-        # For profits between PF_1 and PF_2 the stoploss (sl_profit) used is linearly interpolated
-        # between the values of SL_1 and SL_2. For all profits above PL_2 the sl_profit value 
-        # rises linearly with current profit, for profits below PF_1 the hard stoploss profit is used.
-
-        if (current_profit > PF_2):
-            sl_profit = SL_2 + (current_profit - PF_2)
-        elif (current_profit > PF_1):
-            sl_profit = SL_1 + ((current_profit - PF_1)*(SL_2 - SL_1)/(PF_2 - PF_1))
-        else:
-            sl_profit = HSL
-        
-        return stoploss_from_open(sl_profit, current_profit)
+        return 0.99
 
     def get_ticker_indicator(self):
         return int(self.timeframe[:-1])
@@ -177,7 +160,7 @@ class MultiMA_TSL(IStrategy):
                            current_time: datetime, **kwargs) -> bool:
 
         current_profit = trade.calc_profit_ratio(rate)
-        if (sell_reason.startswith('sell signal ') and (current_profit > self.pPF_1.value)):
+        if (sell_reason.startswith('sell signal (') and (current_profit > 0.018)):
             # Reject sell signal when trailing stoplosses
             return False
         return True
