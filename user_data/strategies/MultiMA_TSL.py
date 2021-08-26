@@ -8,7 +8,6 @@ from pandas import DataFrame
 from functools import reduce
 from freqtrade.persistence import Trade
 from datetime import datetime, timedelta
-from freqtrade.exchange import timeframe_to_prev_date
 
 
 ###########################################################################################################
@@ -55,9 +54,9 @@ class MultiMA_TSL(IStrategy):
     high_offset_ema = DecimalParameter(0.99, 1.1, default=1.012, load=True, space='sell', optimize=False)
     rsi_buy_ema = IntParameter(30, 70, default=61, space='buy', optimize=False)
 
-    base_nb_candles_buy_trima = IntParameter(5, 80, default=20, load=True, space='buy', optimize=True)
-    low_offset_trima = DecimalParameter(0.9, 0.99, default=0.958, load=True, space='buy', optimize=True)
-    rsi_buy_trima = IntParameter(30, 70, default=61, space='buy', optimize=True)
+    base_nb_candles_buy_trima = IntParameter(5, 80, default=20, load=True, space='buy', optimize=False)
+    low_offset_trima = DecimalParameter(0.9, 0.99, default=0.958, load=True, space='buy', optimize=False)
+    rsi_buy_trima = IntParameter(30, 70, default=61, space='buy', optimize=False)
 
     # Protection
     ewo_low = DecimalParameter(
@@ -72,7 +71,7 @@ class MultiMA_TSL(IStrategy):
     # Trailing stoploss (not used)
     trailing_stop = False
     trailing_only_offset_is_reached = True
-    trailing_stop_positive = 0.001
+    trailing_stop_positive = 0.01
     trailing_stop_positive_offset = 0.018
 
     use_custom_stoploss = True
@@ -93,6 +92,7 @@ class MultiMA_TSL(IStrategy):
 
     # Optimal timeframe for the strategy.
     timeframe = '5m'
+    informative_timeframe = '1h'
 
     # Run "populate_indicators()" only for new candle.
     process_only_new_candles = True
@@ -118,7 +118,7 @@ class MultiMA_TSL(IStrategy):
             return 0.02
         elif (current_profit > 0.03):
             return 0.01
-        elif (current_profit > 0.018):
+        elif (current_profit > 0.016):
             return 0.005
 
         return 0.99
@@ -126,32 +126,11 @@ class MultiMA_TSL(IStrategy):
     def get_ticker_indicator(self):
         return int(self.timeframe[:-1])
 
-    def custom_sell(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
-                    current_profit: float, **kwargs):
-        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-        buy_tag = 'empty'
-        if hasattr(trade, 'buy_tag') and trade.buy_tag is not None:
-            buy_tag = trade.buy_tag
-        else:
-            trade_open_date = timeframe_to_prev_date(self.timeframe, trade.open_date_utc)
-            buy_signal = dataframe.loc[dataframe['date'] < trade_open_date]
-            if not buy_signal.empty:
-                buy_signal_candle = buy_signal.iloc[-1]
-                buy_tag = buy_signal_candle['buy_tag'] if buy_signal_candle['buy_tag'] != '' else 'empty'
-        buy_tags = buy_tag.split()
-
-        last_candle = dataframe.iloc[-1].squeeze()
-
-        if (last_candle['close'] > (last_candle['ema_offset_sell'])) :
-            return 'sell signal (' + buy_tag +')'
-
-        return None
-
     def confirm_trade_entry(self, pair: str, order_type: str, amount: float, rate: float, time_in_force: str, **kwargs) -> bool:
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         last_candle = dataframe.iloc[-1].squeeze()
 
-        if ((rate > last_candle['close'])) : return False
+        if (rate > (last_candle['close'] * 1)) : return False
 
         return True
 
@@ -160,7 +139,7 @@ class MultiMA_TSL(IStrategy):
                            current_time: datetime, **kwargs) -> bool:
 
         current_profit = trade.calc_profit_ratio(rate)
-        if (sell_reason.startswith('sell signal (') and (current_profit > 0.018)):
+        if ((sell_reason == 'sell_signal') and (current_profit > 0.016)):
             # Reject sell signal when trailing stoplosses
             return False
         return True
@@ -172,20 +151,40 @@ class MultiMA_TSL(IStrategy):
         informative_pairs = [(pair, '1h') for pair in pairs]
         return informative_pairs
 
+    def informative_1h_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        assert self.dp, "DataProvider is required for multiple timeframes."
+        # Get the informative pair
+        informative_1h = self.dp.get_pair_dataframe(pair=metadata['pair'], timeframe=self.informative_timeframe)
+
+        return informative_1h
+
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        # The indicators for the 1h informative timeframe
+        # informative_1h = self.informative_1h_indicators(dataframe, metadata)
+        # dataframe = merge_informative_pair(dataframe, informative_1h, self.timeframe, self.informative_timeframe, ffill=True)
+
+        if not self.config['runmode'].value == 'hyperopt':
+            dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
+            dataframe['trima_offset_buy'] = ta.TRIMA(dataframe, int(self.base_nb_candles_buy_trima.value)) *self.low_offset_trima.value
+            dataframe['ema_offset_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_sell.value)) *self.high_offset_ema.value
+
         # EWO
         dataframe['ewo'] = EWO(dataframe, self.fast_ewo.value, self.slow_ewo.value)
 
         # RSI
         dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
+        dataframe['rsi_fast'] = ta.RSI(dataframe, timeperiod=4)
+        # dataframe['rsi_slow'] = ta.RSI(dataframe, timeperiod=20)
 
         return dataframe
 
     def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         conditions = []
 
-        dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
-        dataframe['trima_offset_buy'] = ta.TRIMA(dataframe, int(self.base_nb_candles_buy_trima.value)) *self.low_offset_trima.value
+        if self.config['runmode'].value == 'hyperopt':
+            dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
+            dataframe['trima_offset_buy'] = ta.TRIMA(dataframe, int(self.base_nb_candles_buy_trima.value)) *self.low_offset_trima.value
+            dataframe['ema_offset_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_sell.value)) *self.high_offset_ema.value
 
         dataframe.loc[:, 'buy_tag'] = ''
 
@@ -220,6 +219,10 @@ class MultiMA_TSL(IStrategy):
         conditions.append(buy_offset_trima)
 
         add_check = (
+            (dataframe['rsi_fast'] < 30)
+            &
+            (dataframe['close'] < dataframe['ema_offset_sell'])
+            &
             (dataframe['volume'] > 0)
         )
         
@@ -229,10 +232,22 @@ class MultiMA_TSL(IStrategy):
         return dataframe
 
     def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        if self.config['runmode'].value == 'hyperopt':
+            dataframe['ema_offset_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_sell.value)) *self.high_offset_ema.value
+        conditions = []
 
-        dataframe['ema_offset_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_sell.value)) *self.high_offset_ema.value
+        conditions.append(
+            (
+                (dataframe['close'] > dataframe['ema_offset_sell']) &
+                (dataframe['volume'] > 0)
+            )
+        )
 
-        dataframe.loc[:,'sell'] = 0
+        if conditions:
+            dataframe.loc[
+                reduce(lambda x, y: x | y, conditions),
+                'sell'
+            ]=1
 
         return dataframe
 

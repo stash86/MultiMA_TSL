@@ -96,6 +96,6 @@
     },
     "db_url": "sqlite:////freqtrade/user_data/tradesv3.sqlite",
     "user_data_dir" : "user_data",
-    "strategy": "SampleStrategy",
+    "strategy": "MultiMA_TSL",
     "strategy_path": "user_data/strategies"
 }
