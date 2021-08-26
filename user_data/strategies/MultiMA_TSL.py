@@ -144,25 +144,7 @@ class MultiMA_TSL(IStrategy):
             return False
         return True
         
-    def informative_pairs(self):
-        # get access to all pairs available in whitelist.
-        pairs = self.dp.current_whitelist()
-        # Assign tf to each pair so they can be downloaded and cached for strategy.
-        informative_pairs = [(pair, '1h') for pair in pairs]
-        return informative_pairs
-
-    def informative_1h_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        assert self.dp, "DataProvider is required for multiple timeframes."
-        # Get the informative pair
-        informative_1h = self.dp.get_pair_dataframe(pair=metadata['pair'], timeframe=self.informative_timeframe)
-
-        return informative_1h
-
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # The indicators for the 1h informative timeframe
-        # informative_1h = self.informative_1h_indicators(dataframe, metadata)
-        # dataframe = merge_informative_pair(dataframe, informative_1h, self.timeframe, self.informative_timeframe, ffill=True)
-
         if not self.config['runmode'].value == 'hyperopt':
             dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
             dataframe['trima_offset_buy'] = ta.TRIMA(dataframe, int(self.base_nb_candles_buy_trima.value)) *self.low_offset_trima.value
@@ -174,7 +156,6 @@ class MultiMA_TSL(IStrategy):
         # RSI
         dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
         dataframe['rsi_fast'] = ta.RSI(dataframe, timeperiod=4)
-        # dataframe['rsi_slow'] = ta.RSI(dataframe, timeperiod=20)
 
         return dataframe
 
