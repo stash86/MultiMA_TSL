@@ -135,7 +135,7 @@ class MultiMA_TSL(IStrategy):
         last_candle = dataframe.iloc[-1].squeeze()
 
         if(current_profit <= 0.016):
-            if(dataframe['close'] > dataframe['ema_offset_sell']):
+            if(last_candle['close'] > last_candle['ema_offset_sell']):
                 return "Sell Signal"
         return None
 
