@@ -92,7 +92,6 @@ class MultiMA_TSL(IStrategy):
 
     # Optimal timeframe for the strategy.
     timeframe = '5m'
-    informative_timeframe = '1h'
 
     # Run "populate_indicators()" only for new candle.
     process_only_new_candles = True
@@ -103,7 +102,7 @@ class MultiMA_TSL(IStrategy):
     ignore_roi_if_buy_signal = False
 
     # Number of candles the strategy requires before producing valid signals
-    startup_candle_count: int = 300
+    startup_candle_count: int = 200
 
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float, **kwargs) -> float:
@@ -123,27 +122,33 @@ class MultiMA_TSL(IStrategy):
 
         return 0.99
 
+    def custom_sell(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
+                    current_profit: float, **kwargs):
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+
+        if(len(dataframe) < 1): return None
+
+        last_candle = dataframe.iloc[-1].squeeze()
+
+        if(current_profit <= 0.016):
+            if(dataframe['close'] > dataframe['ema_offset_sell']):
+                return "Sell Signal"
+        return None
+
     def get_ticker_indicator(self):
         return int(self.timeframe[:-1])
 
     def confirm_trade_entry(self, pair: str, order_type: str, amount: float, rate: float, time_in_force: str, **kwargs) -> bool:
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+
+        if(len(dataframe) < 1): return False
+
         last_candle = dataframe.iloc[-1].squeeze()
 
         if (rate > (last_candle['close'] * 1)) : return False
 
         return True
 
-    def confirm_trade_exit(self, pair: str, trade: Trade, order_type: str, amount: float,
-                           rate: float, time_in_force: str, sell_reason: str,
-                           current_time: datetime, **kwargs) -> bool:
-
-        current_profit = trade.calc_profit_ratio(rate)
-        if ((sell_reason == 'sell_signal') and (current_profit > 0.016)):
-            # Reject sell signal when trailing stoplosses
-            return False
-        return True
-        
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         if not self.config['runmode'].value == 'hyperopt':
             dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
@@ -215,20 +220,8 @@ class MultiMA_TSL(IStrategy):
     def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         if self.config['runmode'].value == 'hyperopt':
             dataframe['ema_offset_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_sell.value)) *self.high_offset_ema.value
-        conditions = []
 
-        conditions.append(
-            (
-                (dataframe['close'] > dataframe['ema_offset_sell']) &
-                (dataframe['volume'] > 0)
-            )
-        )
-
-        if conditions:
-            dataframe.loc[
-                reduce(lambda x, y: x | y, conditions),
-                'sell'
-            ]=1
+        dataframe.loc[:,'sell'] = 0
 
         return dataframe
 
