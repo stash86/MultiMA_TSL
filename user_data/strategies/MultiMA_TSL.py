@@ -188,7 +188,8 @@ class MultiMA_TSL(IStrategy):
                     &
                     (dataframe['rsi'] < self.rsi_buy_ema.value)
                 )
-            )
+            ) &
+            (dataframe['ema_offset_buy'] < dataframe['ema_offset_sell'])
         )
         dataframe.loc[buy_offset_ema, 'buy_tag'] += 'ema '
         conditions.append(buy_offset_ema)
@@ -203,7 +204,8 @@ class MultiMA_TSL(IStrategy):
                     &
                     (dataframe['rsi'] < self.rsi_buy_trima.value)
                 )
-            )
+            ) &
+            (dataframe['trima_offset_buy'] < dataframe['ema_offset_sell'])
         )
         dataframe.loc[buy_offset_trima, 'buy_tag'] += 'trima '
         conditions.append(buy_offset_trima)
