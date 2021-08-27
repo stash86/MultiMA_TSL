@@ -125,8 +125,11 @@ class MultiMA_TSL(IStrategy):
 
     def custom_sell(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
                     current_profit: float, **kwargs):
+        
+        # Make sure the robot don't close the trade before 3 mins passed
+        if(current_time < trade.open_date_utc + timedelta(minutes=3)) : return None
+        
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-
         if(len(dataframe) < 1): return None
 
         last_candle = dataframe.iloc[-1].squeeze()
