@@ -127,7 +127,7 @@ class MultiMA_TSL(IStrategy):
                     current_profit: float, **kwargs):
         
         # Make sure the robot don't close the trade before 3 mins passed
-        if(current_time < trade.open_date_utc + timedelta(minutes=3)) : return None
+        if(current_time < trade.open_date_utc + timedelta(minutes=5)) : return None
         
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if(len(dataframe) < 1): return None
@@ -188,8 +188,7 @@ class MultiMA_TSL(IStrategy):
                     &
                     (dataframe['rsi'] < self.rsi_buy_ema.value)
                 )
-            ) &
-            (dataframe['ema_offset_buy'] < dataframe['ema_offset_sell'])
+            )
         )
         dataframe.loc[buy_offset_ema, 'buy_tag'] += 'ema '
         conditions.append(buy_offset_ema)
@@ -204,8 +203,7 @@ class MultiMA_TSL(IStrategy):
                     &
                     (dataframe['rsi'] < self.rsi_buy_trima.value)
                 )
-            ) &
-            (dataframe['trima_offset_buy'] < dataframe['ema_offset_sell'])
+            )
         )
         dataframe.loc[buy_offset_trima, 'buy_tag'] += 'trima '
         conditions.append(buy_offset_trima)
