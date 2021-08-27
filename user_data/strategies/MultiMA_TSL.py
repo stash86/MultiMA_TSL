@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 ##                                                                                                       ##
 ###########################################################################################################
 
+# DON'T USE THIS FOR BACKTEST!!!!! Use the one inside "backtest result" folder
 # I hope you do enough testing before proceeding, either backtesting and/or dry run.
 # Any profits and losses are all your responsibility
 
