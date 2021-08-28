@@ -123,22 +123,6 @@ class MultiMA_TSL(IStrategy):
 
         return 0.99
 
-    def custom_sell(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
-                    current_profit: float, **kwargs):
-        
-        # Make sure the robot don't close the trade before 3 mins passed
-        if(current_time < trade.open_date_utc + timedelta(minutes=5)) : return None
-        
-        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-        if(len(dataframe) < 1): return None
-
-        last_candle = dataframe.iloc[-1].squeeze()
-
-        if(current_profit <= 0.016):
-            if(last_candle['close'] > last_candle['ema_offset_sell']):
-                return "Sell Signal"
-        return None
-
     def get_ticker_indicator(self):
         return int(self.timeframe[:-1])
 
@@ -151,6 +135,16 @@ class MultiMA_TSL(IStrategy):
 
         if (rate > (last_candle['close'] * 1)) : return False
 
+        return True
+
+    # Credit to @ZergOo for this code
+    def confirm_trade_exit(self, pair: str, trade: Trade, order_type: str, amount: float,
+                           rate: float, time_in_force: str, sell_reason: str,
+                           current_time: datetime, **kwargs) -> bool:
+
+        # Check if trailing is active
+        if ((trade.initial_stop_loss != trade.stop_loss) and (trade.stop_loss < rate)):
+            return False
         return True
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -224,9 +218,22 @@ class MultiMA_TSL(IStrategy):
     def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         if self.config['runmode'].value == 'hyperopt':
             dataframe['ema_offset_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_sell.value)) *self.high_offset_ema.value
+        
+        conditions = []
 
-        dataframe.loc[:,'sell'] = 0
+        conditions.append(
+            (
+                (dataframe['close'] > dataframe['ema_offset_sell']) &
+                (dataframe['volume'] > 0)
+            )
+        )
 
+        if conditions:
+            dataframe.loc[
+                reduce(lambda x, y: x | y, conditions),
+                'sell'
+            ]=1
+        
         return dataframe
 
 
