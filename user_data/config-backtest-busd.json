@@ -175,7 +175,10 @@
             "HNT/BUSD",
             "MIR/BUSD",
             "TWT/BUSD",
-            "CTK/BUSD"
+            "CTK/BUSD",
+            "XEC/BUSD",
+            "LRC/BUSD",
+            "CHR/BUSD",
         ],
         "pair_blacklist": []
     },
