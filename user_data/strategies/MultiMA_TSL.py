@@ -22,7 +22,7 @@ from technical.indicators import zema
 # I hope you do enough testing before proceeding, either backtesting and/or dry run.
 # Any profits and losses are all your responsibility
 
-class MultiMA_TSL2a(IStrategy):
+class MultiMA_TSL(IStrategy):
     INTERFACE_VERSION = 2
 
     buy_params = {
