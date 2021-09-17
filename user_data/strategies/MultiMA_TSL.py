@@ -204,7 +204,7 @@ class MultiMA_TSL(IStrategy):
 
             # smoothing coefficients
             sell_ema = self.custom_info[pair][self.SELLMA]
-            if(sell_ema == 0.0):
+            if(sell_ema == 0):
                 sell_ema = last_candle['ema_sell'] 
             emaLength = 32
             alpha = 2 /(1 + emaLength) 
@@ -299,7 +299,7 @@ class MultiMA_TSL(IStrategy):
         # Check if the entry already exists
         if not metadata["pair"] in self.custom_info:
             # Create empty entry for this pair {datestamp, sellma, sell_trigger}
-            self.custom_info[metadata["pair"]] = ['', 0.0, 0] 
+            self.custom_info[metadata["pair"]] = ['', 0, 0] 
 
 
         return dataframe
