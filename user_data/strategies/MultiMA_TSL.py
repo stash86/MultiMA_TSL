@@ -204,6 +204,8 @@ class MultiMA_TSL(IStrategy):
 
             # smoothing coefficients
             sell_ema = self.custom_info[pair][self.SELLMA]
+            if(sell_ema == 0.0):
+                sell_ema = last_candle['ema_sell'] 
             emaLength = 32
             alpha = 2 /(1 + emaLength) 
 
