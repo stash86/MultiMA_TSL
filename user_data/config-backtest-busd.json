@@ -1,7 +1,7 @@
 {
     "max_open_trades": 4,
     "stake_currency": "BUSD",
-    "stake_amount" : "unlimited",
+    "stake_amount" : 15,
     "amend_last_stake_amount ": true,
     "tradable_balance_ratio": 0.99,
     "fiat_display_currency": "USD",
@@ -179,6 +179,8 @@
             "XEC/BUSD",
             "LRC/BUSD",
             "CHR/BUSD",
+            "ROSE/BUSD",
+            "QNT/BUSD"
         ],
         "pair_blacklist": []
     },
