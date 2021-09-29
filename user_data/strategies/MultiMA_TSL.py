@@ -296,6 +296,12 @@ class MultiMA_TSL(IStrategy):
 
         dataframe = HA(dataframe, 4)
 
+        if self.config['runmode'].value in ('live', 'dry_run'):
+            # Exchange downtime protection
+            dataframe['live_data_ok'] = (dataframe['volume'].rolling(window=72, min_periods=72).min() > 0)
+        else:
+            dataframe['live_data_ok'] = True
+
         # Check if the entry already exists
         if not metadata["pair"] in self.custom_info:
             # Create empty entry for this pair {datestamp, sellma, sell_trigger}
@@ -383,6 +389,8 @@ class MultiMA_TSL(IStrategy):
             conditions.append(buy_offset_hma)
 
         add_check = (
+            (dataframe['live_data_ok'])
+            &
             (dataframe['close'] < dataframe['Smooth_HA_L'])
             &
             (dataframe['close'] < (dataframe['ema_sell'] * self.high_offset_sell_ema.value))
