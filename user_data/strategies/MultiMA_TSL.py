@@ -23,7 +23,7 @@ from technical.indicators import zema, VIDYA
 ##    - ChangeToTower, for the PMax idea                                                                 ##
 ##    - JimmyNixx, for their snippet to limit close value from the peak (that I modify into 5m tf check) ##
 ##    - froggleston, for the Heikinashi check snippet from Cryptofrog                                    ##
-##                                                                                                       ##
+##    - Uzirox, for their pump detection code                                                            ##
 ##                                                                                                       ##
 ##                                                                                                       ##
 ###########################################################################################################
@@ -31,7 +31,7 @@ from technical.indicators import zema, VIDYA
 # I hope you do enough testing before proceeding, either backtesting and/or dry run.
 # Any profits and losses are all your responsibility
 
-class MultiMA_TSL(IStrategy):
+class MultiMA_TSL3(IStrategy):
     INTERFACE_VERSION = 2
 
     DATESTAMP = 0
@@ -189,7 +189,7 @@ class MultiMA_TSL(IStrategy):
     ignore_roi_if_buy_signal = False
 
     # Number of candles the strategy requires before producing valid signals
-    startup_candle_count: int = 200
+    startup_candle_count: int = 400
 
     def custom_sell(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
                     current_profit: float, **kwargs):
@@ -215,7 +215,7 @@ class MultiMA_TSL(IStrategy):
             self.custom_info[pair][self.DATESTAMP] = last_candle['date']
 
             if((last_candle['close'] > (sell_ema * self.high_offset_sell_ema.value)) & (last_candle['buy_copy'] == 0)):
-                if not self.config['runmode'].value in ('backtest', 'hyperopt'):
+                if self.config['runmode'].value in ('live', 'dry_run'):
                     self.custom_info[pair][self.SELL_TRIGGER] = 1
                     return False
 
@@ -455,6 +455,280 @@ class MultiMA_TSL(IStrategy):
 
         return dataframe
 
+class MultiMA_TSL3a(MultiMA_TSL3):
+    
+    informative_timeframe = '1h'
+    timeframe_15m = '15m'
+
+    min_rsi_sell = 50
+    min_rsi_sell_15m = 70
+
+    max_change_pump = 35
+
+    def informative_pairs(self):
+        pairs = self.dp.current_whitelist()
+        informative_pairs = [(pair, self.informative_timeframe) for pair in pairs]
+        informative_pairs.extend([(pair, self.timeframe_15m) for pair in pairs])
+        return informative_pairs
+
+    def get_informative_15m_indicators(self, metadata: dict):
+        dataframe = self.dp.get_pair_dataframe(pair=metadata['pair'], timeframe=self.timeframe_15m)
+        dataframe['rsi_fast'] = ta.RSI(dataframe, timeperiod=4)
+        dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
+
+        return dataframe
+
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        informative_15m = self.get_informative_15m_indicators(metadata)
+        dataframe = merge_informative_pair(dataframe, informative_15m, self.timeframe, self.timeframe_15m, ffill=True)
+        drop_columns = [(s + "_" + self.timeframe_15m) for s in ['date', 'open', 'high', 'low', 'close', 'volume']]
+        dataframe.drop(columns=dataframe.columns.intersection(drop_columns), inplace=True)
+
+        # EWO
+        dataframe['ewo'] = EWO(dataframe, self.fast_ewo.value, self.slow_ewo.value)
+
+        # RSI
+        dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
+        dataframe['rsi_fast'] = ta.RSI(dataframe, timeperiod=4)
+        dataframe['rsi_84'] = ta.RSI(dataframe, timeperiod=84)
+        dataframe['rsi_112'] = ta.RSI(dataframe, timeperiod=112)
+
+        # Heiken Ashi
+        heikinashi = qtpylib.heikinashi(dataframe)
+        heikinashi["volume"] = dataframe["volume"]
+
+        # Profit Maximizer - PMAX
+        dataframe['pm'], dataframe['pmx'] = pmax(heikinashi, MAtype=1, length=9, multiplier=27, period=10, src=3)
+        dataframe['source'] = (dataframe['high'] + dataframe['low'] + dataframe['open'] + dataframe['close'])/4
+        dataframe['pmax_thresh'] = ta.EMA(dataframe['source'], timeperiod=9)
+
+        dataframe = HA(dataframe, 4)
+
+        # pump detector
+        dataframe['pump'] = pump_warning(dataframe, perc=int(self.max_change_pump)) #25% di pump
+
+        if self.config['runmode'].value in ('live', 'dry_run'):
+            # Exchange downtime protection
+            dataframe['live_data_ok'] = (dataframe['volume'].rolling(window=72, min_periods=72).min() > 0)
+        else:
+            dataframe['live_data_ok'] = True
+
+        # Check if the entry already exists
+        if not metadata["pair"] in self.custom_info:
+            # Create empty entry for this pair {datestamp, sellma, sell_trigger}
+            self.custom_info[metadata["pair"]] = ['', 0, 0] 
+
+        return dataframe
+
+    def custom_sell(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
+                    current_profit: float, **kwargs):
+       
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        if(len(dataframe) < 1):
+            return False
+        last_candle = dataframe.iloc[-1]
+
+        if(self.custom_info[pair][self.DATESTAMP] != last_candle['date']):
+            # new candle, update EMA and check sell
+
+            # smoothing coefficients
+            sell_ema = self.custom_info[pair][self.SELLMA]
+            if(sell_ema == 0):
+                sell_ema = last_candle['ema_sell'] 
+            emaLength = 32
+            alpha = 2 /(1 + emaLength) 
+
+            # update sell_ema
+            sell_ema = (alpha * last_candle['close']) + ((1 - alpha) * sell_ema)
+            self.custom_info[pair][self.SELLMA] = sell_ema
+            self.custom_info[pair][self.DATESTAMP] = last_candle['date']
+
+            sell_tag = ''
+
+            if(
+                (last_candle['close'] > (sell_ema * self.high_offset_sell_ema.value))
+                &
+                (last_candle['buy_copy'] == 0)
+                &
+                (last_candle['rsi'] > self.min_rsi_sell)
+            ):
+                if self.config['runmode'].value in ('live', 'dry_run'):
+                    self.custom_info[pair][self.SELL_TRIGGER] = 1
+                    return False
+
+                sell_tag = 'Decaying EMA'
+
+            if(
+                (last_candle['rsi_fast_15m'] > self.min_rsi_sell_15m)
+                &
+                (last_candle['buy_copy'] == 0)
+                &
+                (last_candle['rsi'] > self.min_rsi_sell)
+            ):
+                if self.config['runmode'].value in ('live', 'dry_run'):
+                    self.custom_info[pair][self.SELL_TRIGGER] = 1
+                    return False
+
+                sell_tag = 'RSI 15m Overbought'
+
+            if not (sell_tag == ''):
+                buy_tag = 'empty'
+
+                if hasattr(trade, 'buy_tag') and trade.buy_tag is not None:
+                    buy_tag = trade.buy_tag
+                else:
+                    trade_open_date = timeframe_to_prev_date(self.timeframe, trade.open_date_utc)
+                    buy_signal = dataframe.loc[dataframe['date'] < trade_open_date]
+                    if not buy_signal.empty:
+                        buy_signal_candle = buy_signal.iloc[-1]
+                        buy_tag = buy_signal_candle['buy_tag'] if buy_signal_candle['buy_tag'] != '' else 'empty'
+
+                return f'{sell_tag} ({buy_tag})'
+        
+        return False
+
+    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        conditions = []
+        dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
+        dataframe['ema_offset_buy2'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema2.value)) *self.low_offset_ema2.value
+        dataframe['ema_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_ema_sell.value))
+        
+        dataframe.loc[:, 'buy_tag'] = ''
+        dataframe.loc[:, 'buy_copy'] = 0
+        dataframe.loc[:, 'buy'] = 0
+
+        if (self.buy_condition_trima_enable.value):
+            dataframe['trima_offset_buy'] = ta.TRIMA(dataframe, int(self.base_nb_candles_buy_trima.value)) *self.low_offset_trima.value
+            dataframe['trima_offset_buy2'] = ta.TRIMA(dataframe, int(self.base_nb_candles_buy_trima2.value)) *self.low_offset_trima2.value
+
+            buy_offset_trima = (
+                (
+                    (dataframe['close'] < dataframe['trima_offset_buy'])
+                    &
+                    (dataframe['pm'] <= dataframe['pmax_thresh'])
+                )
+                |
+                (
+                    (dataframe['close'] < dataframe['trima_offset_buy2'])
+                    &
+                    (dataframe['pm'] > dataframe['pmax_thresh'])
+                )
+            )
+            dataframe.loc[buy_offset_trima, 'buy_tag'] += 'trima '
+            conditions.append(buy_offset_trima)
+
+        if (self.buy_condition_zema_enable.value):
+            dataframe['zema_offset_buy'] = zema(dataframe, int(self.base_nb_candles_buy_zema.value)) *self.low_offset_zema.value
+            dataframe['zema_offset_buy2'] = zema(dataframe, int(self.base_nb_candles_buy_zema2.value)) *self.low_offset_zema2.value
+            buy_offset_zema = (
+                (
+                    (dataframe['close'] < dataframe['zema_offset_buy'])
+                    &
+                    (dataframe['pm'] <= dataframe['pmax_thresh'])
+                )
+                |
+                (
+                    (dataframe['close'] < dataframe['zema_offset_buy2'])
+                    &
+                    (dataframe['pm'] > dataframe['pmax_thresh'])
+                )
+            )
+            dataframe.loc[buy_offset_zema, 'buy_tag'] += 'zema '
+            conditions.append(buy_offset_zema)
+
+        if (self.buy_condition_hma_enable.value):
+            dataframe['hma_offset_buy'] = qtpylib.hull_moving_average(dataframe['close'], window=int(self.base_nb_candles_buy_hma.value)) *self.low_offset_hma.value
+            dataframe['hma_offset_buy2'] = qtpylib.hull_moving_average(dataframe['close'], window=int(self.base_nb_candles_buy_hma2.value)) *self.low_offset_hma2.value
+            buy_offset_hma = (
+                (
+                    (
+                        (dataframe['close'] < dataframe['hma_offset_buy'])
+                        &
+                        (dataframe['pm'] <= dataframe['pmax_thresh'])
+                        &
+                        (dataframe['rsi'] < 35)
+    
+                    )
+                    |
+                    (
+                        (dataframe['close'] < dataframe['hma_offset_buy2'])
+                        &
+                        (dataframe['pm'] > dataframe['pmax_thresh'])
+                        &
+                        (dataframe['rsi'] < 30)
+                    )
+                )
+                &
+                (dataframe['rsi_fast'] < 30)
+                
+            )
+            dataframe.loc[buy_offset_hma, 'buy_tag'] += 'hma '
+            conditions.append(buy_offset_hma)
+
+        add_check = (
+            (dataframe['live_data_ok'])
+            &
+            (dataframe['close'] < dataframe['Smooth_HA_L'])
+            &
+            (dataframe['close'] < (dataframe['ema_sell'] * self.high_offset_sell_ema.value))
+            &
+            (dataframe['close'].rolling(288).max() >= (dataframe['close'] * 1.10 ))
+            &
+            (dataframe['Smooth_HA_O'].shift(1) < dataframe['Smooth_HA_H'].shift(1))
+            &
+            (dataframe['rsi_fast'] < self.buy_rsi_fast.value)
+            &
+            (dataframe['rsi_84'] < 60)
+            &
+            (dataframe['rsi_112'] < 60)
+            &
+            (dataframe['pump'].rolling(20).max() < 1)
+            &
+            (
+                (
+                    (dataframe['close'] < dataframe['ema_offset_buy'])
+                    &
+                    (dataframe['pm'] <= dataframe['pmax_thresh'])
+                    &
+                    (
+                        (dataframe['ewo'] < self.ewo_low.value)
+                        |
+                        (
+                            (dataframe['ewo'] > self.ewo_high.value)
+                            &
+                            (dataframe['rsi'] < self.rsi_buy.value)
+                        )
+                    )
+                )
+                |
+                (
+                    (dataframe['close'] < dataframe['ema_offset_buy2'])
+                    &
+                    (dataframe['pm'] > dataframe['pmax_thresh'])
+                    &
+                    (
+                        (dataframe['ewo'] < self.ewo_low2.value)
+                        |
+                        (
+                            (dataframe['ewo'] > self.ewo_high2.value)
+                            &
+                            (dataframe['rsi'] < self.rsi_buy2.value)
+                        )
+                    )
+                )
+            )
+            &
+            (dataframe['volume'] > 0)
+        )
+        
+        if conditions:
+            dataframe.loc[
+                (add_check & reduce(lambda x, y: x | y, conditions)),
+                ['buy_copy','buy']
+            ]=(1,1)
+
+        return dataframe
+
 
 # Elliot Wave Oscillator
 def EWO(dataframe, sma1_length=5, sma2_length=35):
@@ -580,3 +854,12 @@ def HA(dataframe, smoothing=None):
             df['Smooth_HA_L']=ta.EMA(df['HA_Low'], sml)
             
     return df
+
+def pump_warning(dataframe, perc=15):
+    # NOTE: segna "1" se c'è un pump
+    df = dataframe.copy()    
+    df["change"] = df["high"] - df["low"]
+    df["test1"] = (df["close"] > df["open"])
+    df["test2"] = ((df["change"]/df["low"]) > (perc/100))
+    df["result"] = (df["test1"] & df["test2"]).astype('int')
+    return df['result']
