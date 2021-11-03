@@ -240,7 +240,7 @@ class MultiMA_TSL3(IStrategy):
         sl_new = 1
 
         if(self.custom_info[pair][self.SELL_TRIGGER] == 1):
-            if not self.config['runmode'].value in ('backtest', 'hyperopt'):
+            if self.config['runmode'].value in ('live', 'dry_run'):
                 sl_new = 0.001
 
         if (current_profit > 0.2):
@@ -856,7 +856,6 @@ def HA(dataframe, smoothing=None):
     return df
 
 def pump_warning(dataframe, perc=15):
-    # NOTE: segna "1" se c'è un pump
     df = dataframe.copy()    
     df["change"] = df["high"] - df["low"]
     df["test1"] = (df["close"] > df["open"])
