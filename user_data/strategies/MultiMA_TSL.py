@@ -457,6 +457,9 @@ class MultiMA_TSL3(IStrategy):
 
 class MultiMA_TSL3a(MultiMA_TSL3):
     
+    def version(self) -> str:
+        return "v3a.0.1"
+
     informative_timeframe = '1h'
     timeframe_15m = '15m'
 
@@ -479,44 +482,15 @@ class MultiMA_TSL3a(MultiMA_TSL3):
         return dataframe
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe = super().populate_indicators(dataframe, metadata)
+
         informative_15m = self.get_informative_15m_indicators(metadata)
         dataframe = merge_informative_pair(dataframe, informative_15m, self.timeframe, self.timeframe_15m, ffill=True)
         drop_columns = [(s + "_" + self.timeframe_15m) for s in ['date', 'open', 'high', 'low', 'close', 'volume']]
         dataframe.drop(columns=dataframe.columns.intersection(drop_columns), inplace=True)
 
-        # EWO
-        dataframe['ewo'] = EWO(dataframe, self.fast_ewo.value, self.slow_ewo.value)
-
-        # RSI
-        dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
-        dataframe['rsi_fast'] = ta.RSI(dataframe, timeperiod=4)
-        dataframe['rsi_84'] = ta.RSI(dataframe, timeperiod=84)
-        dataframe['rsi_112'] = ta.RSI(dataframe, timeperiod=112)
-
-        # Heiken Ashi
-        heikinashi = qtpylib.heikinashi(dataframe)
-        heikinashi["volume"] = dataframe["volume"]
-
-        # Profit Maximizer - PMAX
-        dataframe['pm'], dataframe['pmx'] = pmax(heikinashi, MAtype=1, length=9, multiplier=27, period=10, src=3)
-        dataframe['source'] = (dataframe['high'] + dataframe['low'] + dataframe['open'] + dataframe['close'])/4
-        dataframe['pmax_thresh'] = ta.EMA(dataframe['source'], timeperiod=9)
-
-        dataframe = HA(dataframe, 4)
-
         # pump detector
-        dataframe['pump'] = pump_warning(dataframe, perc=int(self.max_change_pump)) #25% di pump
-
-        if self.config['runmode'].value in ('live', 'dry_run'):
-            # Exchange downtime protection
-            dataframe['live_data_ok'] = (dataframe['volume'].rolling(window=72, min_periods=72).min() > 0)
-        else:
-            dataframe['live_data_ok'] = True
-
-        # Check if the entry already exists
-        if not metadata["pair"] in self.custom_info:
-            # Create empty entry for this pair {datestamp, sellma, sell_trigger}
-            self.custom_info[metadata["pair"]] = ['', 0, 0] 
+        dataframe['pump'] = pump_warning(dataframe, perc=int(self.max_change_pump))
 
         return dataframe
 
@@ -531,60 +505,34 @@ class MultiMA_TSL3a(MultiMA_TSL3):
         if(self.custom_info[pair][self.DATESTAMP] != last_candle['date']):
             # new candle, update EMA and check sell
 
-            # smoothing coefficients
-            sell_ema = self.custom_info[pair][self.SELLMA]
-            if(sell_ema == 0):
-                sell_ema = last_candle['ema_sell'] 
-            emaLength = 32
-            alpha = 2 /(1 + emaLength) 
+            if not(self.dp.runmode.value in ('live', 'dry_run')):
+                # backtest or hyperopt
+                sell_ema = self.custom_info[pair][self.SELLMA]
+                if(sell_ema == 0):
+                    sell_ema = last_candle['ema_sell']
 
-            # update sell_ema
-            sell_ema = (alpha * last_candle['close']) + ((1 - alpha) * sell_ema)
-            self.custom_info[pair][self.SELLMA] = sell_ema
-            self.custom_info[pair][self.DATESTAMP] = last_candle['date']
+                # new candle, update EMA
+                # smoothing coefficients
+                emaLength = 32
+                alpha = 2 /(1 + emaLength) 
+    
+                # update sell_ema
+                sell_ema = (alpha * last_candle['close']) + ((1 - alpha) * sell_ema)
 
-            sell_tag = ''
+                # Resetting decaying ema?
+                if(last_candle['close'] < last_candle['ema_offset_buy']):
+                    sell_ema = last_candle['ema_sell']
 
-            if(
-                (last_candle['close'] > (sell_ema * self.high_offset_sell_ema.value))
-                &
-                (last_candle['buy_copy'] == 0)
-                &
-                (last_candle['rsi'] > self.min_rsi_sell)
-            ):
-                if self.config['runmode'].value in ('live', 'dry_run'):
-                    self.custom_info[pair][self.SELL_TRIGGER] = 1
-                    return False
-
-                sell_tag = 'Decaying EMA'
-
-            if(
-                (last_candle['rsi_fast_15m'] > self.min_rsi_sell_15m)
-                &
-                (last_candle['buy_copy'] == 0)
-                &
-                (last_candle['rsi'] > self.min_rsi_sell)
-            ):
-                if self.config['runmode'].value in ('live', 'dry_run'):
-                    self.custom_info[pair][self.SELL_TRIGGER] = 1
-                    return False
-
-                sell_tag = 'RSI 15m Overbought'
-
-            if not (sell_tag == ''):
-                buy_tag = 'empty'
-
-                if hasattr(trade, 'buy_tag') and trade.buy_tag is not None:
-                    buy_tag = trade.buy_tag
-                else:
-                    trade_open_date = timeframe_to_prev_date(self.timeframe, trade.open_date_utc)
-                    buy_signal = dataframe.loc[dataframe['date'] < trade_open_date]
-                    if not buy_signal.empty:
-                        buy_signal_candle = buy_signal.iloc[-1]
-                        buy_tag = buy_signal_candle['buy_tag'] if buy_signal_candle['buy_tag'] != '' else 'empty'
-
-                return f'{sell_tag} ({buy_tag})'
+                self.custom_info[pair][self.SELLMA] = sell_ema
+                self.custom_info[pair][self.DATESTAMP] = last_candle['date']
         
+                if((last_candle['close'] > (sell_ema * self.high_offset_sell_ema.value)) & (last_candle['buy_copy'] == 0)):
+                    return 'Decaying EMA BT '
+
+            trade_date = timeframe_to_prev_date(self.timeframe, trade.open_date_utc)
+            self.custom_info[pair][self.TRADE_OPEN_DATE] = trade_date
+            self.custom_info[pair][self.IN_TRADE] = 1
+
         return False
 
     def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -726,6 +674,40 @@ class MultiMA_TSL3a(MultiMA_TSL3):
                 (add_check & reduce(lambda x, y: x | y, conditions)),
                 ['buy_copy','buy']
             ]=(1,1)
+
+        return dataframe
+
+    def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        
+        conditions = []
+        dataframe.loc[:, 'exit_tag'] = ''
+
+        sell_cond_1 = (                   
+            (dataframe['rsi_fast_15m'] > self.min_rsi_sell_15m)
+            &
+            (dataframe['rsi'] > self.min_rsi_sell)
+            &
+            (dataframe['volume'] > 0)
+        )
+
+        conditions.append(sell_cond_1)
+        dataframe.loc[sell_cond_1, 'exit_tag'] += 'RSI 15m Overbought '
+
+        if(self.custom_info[metadata['pair']][self.SELLMA_VALID] == 1) and (self.dp.runmode.value in ('live', 'dry_run')):
+            sell_cond_2 = (
+                (dataframe['close'] > dataframe['sellma_offset'])
+                &
+                (dataframe['volume'] > 0)
+            )
+
+            conditions.append(sell_cond_2)
+            dataframe.loc[sell_cond_2, 'exit_tag'] += 'Decaying EMA '
+
+        if conditions:
+            dataframe.loc[
+                reduce(lambda x, y: x | y, conditions),
+                'sell'
+            ]=1
 
         return dataframe
 
