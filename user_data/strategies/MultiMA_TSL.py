@@ -32,11 +32,17 @@ from technical.indicators import zema, VIDYA
 # Any profits and losses are all your responsibility
 
 class MultiMA_TSL3(IStrategy):
+    def version(self) -> str:
+        return "v3.0.1"
+
     INTERFACE_VERSION = 2
 
     DATESTAMP = 0
     SELLMA = 1
     SELL_TRIGGER=2
+    IN_TRADE = 3
+    TRADE_OPEN_DATE = 4
+    SELLMA_VALID = 5
 
     buy_params = {
         "base_nb_candles_buy_trima": 15,
@@ -59,6 +65,10 @@ class MultiMA_TSL3(IStrategy):
         "low_offset_hma": 0.948,
         "low_offset_hma2": 0.941,
 
+        "buy_condition_trima_enable": True,
+        "buy_condition_zema_enable": True,
+        "buy_condition_hma_enable": True,
+
         "ewo_high": 2.615,
         "ewo_high2": 2.188,
         "ewo_low": -19.632,
@@ -78,7 +88,7 @@ class MultiMA_TSL3(IStrategy):
         "0": 100
     }
 
-    stoploss = -0.15
+    stoploss = -0.25
 
     optimize_sell_ema = False
     base_nb_candles_ema_sell = IntParameter(5, 80, default=20, space='sell', optimize=False)
@@ -202,45 +212,50 @@ class MultiMA_TSL3(IStrategy):
         if(self.custom_info[pair][self.DATESTAMP] != last_candle['date']):
             # new candle, update EMA and check sell
 
-            # smoothing coefficients
-            sell_ema = self.custom_info[pair][self.SELLMA]
-            if(sell_ema == 0):
-                sell_ema = last_candle['ema_sell'] 
-            emaLength = 32
-            alpha = 2 /(1 + emaLength) 
+            if not(self.dp.runmode.value in ('live', 'dry_run')):
+                # backtest or hyperopt
+                sell_ema = self.custom_info[pair][self.SELLMA]
+                if(sell_ema == 0):
+                    sell_ema = last_candle['ema_sell']
 
-            # update sell_ema
-            sell_ema = (alpha * last_candle['close']) + ((1 - alpha) * sell_ema)
-            self.custom_info[pair][self.SELLMA] = sell_ema
-            self.custom_info[pair][self.DATESTAMP] = last_candle['date']
+                # new candle, update EMA
+                # smoothing coefficients
+                emaLength = 32
+                alpha = 2 /(1 + emaLength) 
+    
+                # update sell_ema
+                sell_ema = (alpha * last_candle['close']) + ((1 - alpha) * sell_ema)
 
-            if((last_candle['close'] > (sell_ema * self.high_offset_sell_ema.value)) & (last_candle['buy_copy'] == 0)):
-                if self.config['runmode'].value in ('live', 'dry_run'):
-                    self.custom_info[pair][self.SELL_TRIGGER] = 1
-                    return False
+                # Resetting decaying ema?
+                if(last_candle['close'] < last_candle['ema_offset_buy']):
+                    sell_ema = last_candle['ema_sell']
 
-                buy_tag = 'empty'
-
-                if hasattr(trade, 'buy_tag') and trade.buy_tag is not None:
-                    buy_tag = trade.buy_tag
-                else:
-                    trade_open_date = timeframe_to_prev_date(self.timeframe, trade.open_date_utc)
-                    buy_signal = dataframe.loc[dataframe['date'] < trade_open_date]
-                    if not buy_signal.empty:
-                        buy_signal_candle = buy_signal.iloc[-1]
-                        buy_tag = buy_signal_candle['buy_tag'] if buy_signal_candle['buy_tag'] != '' else 'empty'
-
-                return f'New Sell Signal ({buy_tag})'
+                self.custom_info[pair][self.SELLMA] = sell_ema
+                self.custom_info[pair][self.DATESTAMP] = last_candle['date']
         
+                if((last_candle['close'] > (sell_ema * self.high_offset_sell_ema.value)) & (last_candle['buy_copy'] == 0)):
+                    return 'Decaying EMA BT'
+
+            else:
+                # live or dry
+                if (self.custom_info[pair][self.IN_TRADE] == 1):
+                    if(self.custom_info[pair][self.SELLMA_VALID] == 1):
+                        # in a trade, populate_indicators() will have calculated the new sellma_offset
+                        if((last_candle['close'] > last_candle['sellma_offset']) & (last_candle['buy_copy'] == 0)):
+                            return 'Decaying EMA'
+
+            trade_date = timeframe_to_prev_date(self.timeframe, trade.open_date_utc)
+            self.custom_info[pair][self.TRADE_OPEN_DATE] = trade_date
+            self.custom_info[pair][self.IN_TRADE] = 1
+
         return False
 
-    #credit to Perkmeister for this custom stoploss to help the strategy ride a green candle when the sell signal triggered
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float, **kwargs) -> float:
         sl_new = 1
 
         if(self.custom_info[pair][self.SELL_TRIGGER] == 1):
-            if self.config['runmode'].value in ('live', 'dry_run'):
+            if not self.config['runmode'].value in ('backtest', 'hyperopt'):
                 sl_new = 0.001
 
         if (current_profit > 0.2):
@@ -258,18 +273,24 @@ class MultiMA_TSL3(IStrategy):
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if(len(dataframe) < 1):
             return False
+
         last_candle = dataframe.iloc[-1].squeeze()
         if ((rate > last_candle['close'])) : 
             return False
 
         self.custom_info[pair][self.DATESTAMP] = last_candle['date']
         self.custom_info[pair][self.SELLMA] = last_candle['ema_sell']
+        self.custom_info[pair][self.IN_TRADE] = 1
 
         return True
 
     def confirm_trade_exit(self, pair: str, trade: Trade, order_type: str, amount: float,
                            rate: float, time_in_force: str, sell_reason: str, **kwargs) -> bool:
+        
         self.custom_info[pair][self.SELL_TRIGGER] = 0
+        self.custom_info[pair][self.IN_TRADE] = 0
+        self.custom_info[pair][self.SELLMA_VALID] = 0
+
         return True
 
     def get_ticker_indicator(self):
@@ -304,17 +325,58 @@ class MultiMA_TSL3(IStrategy):
 
         # Check if the entry already exists
         if not metadata["pair"] in self.custom_info:
-            # Create empty entry for this pair {datestamp, sellma, sell_trigger}
-            self.custom_info[metadata["pair"]] = ['', 0, 0] 
+            # Create empty entry for this pair {datestamp, sellma, sell_trigger, in_trade, trade_open_date, sellma_valid}
+            self.custom_info[metadata["pair"]] = ['', 0, 0, 0, '', 0]
 
+        if (self.dp.runmode.value in ('live', 'dry_run')):
+            dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
+            dataframe['ema_offset_buy2'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema2.value)) *self.low_offset_ema2.value
+            dataframe['ema_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_ema_sell.value))
+
+            dataframe['sellma'] = dataframe['ema_sell']
+
+            if(self.custom_info[metadata['pair']][self.IN_TRADE] == 1):
+                # in trade       
+                trade_open_candle = dataframe.loc[dataframe['date'] == self.custom_info[metadata['pair']][self.TRADE_OPEN_DATE]]
+                if(len(trade_open_candle) > 0):
+                                    
+                    trade_open_index = trade_open_candle.index[0]
+                    
+                    row = trade_open_index
+                    last_row = dataframe.tail(1).index.item()
+                    # print("last_row = " + str(last_row))
+                    
+                    # smoothing coefficients
+                    emaLength = 32
+                    alpha = 2 /(1 + emaLength) 
+    
+                    sell_ema = dataframe['sellma'].iloc[row]
+                    row += 1
+    
+                    while (row <= last_row):
+                        # update sell_ema and store in dataframe
+                        sell_ema = (alpha * dataframe['close'].iloc[row]) + ((1 - alpha) * sell_ema)
+
+                        # Resetting decaying ema?
+                        if(dataframe['close'].iloc[row] < dataframe['ema_offset_buy'].iloc[row]):
+                            sell_ema = dataframe['ema_sell'].iloc[row]
+
+                        dataframe['sellma'].iloc[row] = sell_ema
+                        row += 1
+                
+                self.custom_info[metadata['pair']][self.SELLMA_VALID] = 1
+
+            dataframe['sellma_offset'] = dataframe['sellma'] * self.high_offset_sell_ema.value
 
         return dataframe
 
     def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         conditions = []
-        dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
-        dataframe['ema_offset_buy2'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema2.value)) *self.low_offset_ema2.value
-        dataframe['ema_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_ema_sell.value))
+
+        if not (self.dp.runmode.value in ('live', 'dry_run')):
+            dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema.value)) *self.low_offset_ema.value
+            dataframe['ema_offset_buy2'] = ta.EMA(dataframe, int(self.base_nb_candles_buy_ema2.value)) *self.low_offset_ema2.value
+            dataframe['ema_sell'] = ta.EMA(dataframe, int(self.base_nb_candles_ema_sell.value))
         
         dataframe.loc[:, 'buy_tag'] = ''
         dataframe.loc[:, 'buy_copy'] = 0
@@ -451,7 +513,25 @@ class MultiMA_TSL3(IStrategy):
         return dataframe
 
     def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe.loc[:, 'sell'] = 0
+        
+        conditions = []
+        dataframe.loc[:, 'exit_tag'] = ''
+
+        if(self.custom_info[metadata['pair']][self.SELLMA_VALID] == 1) and (self.dp.runmode.value in ('live', 'dry_run')):
+            sell_cond_2 = (
+                (dataframe['close'] > dataframe['sellma_offset'])
+                &
+                (dataframe['volume'] > 0)
+            )
+
+            conditions.append(sell_cond_2)
+            dataframe.loc[sell_cond_2, 'exit_tag'] += 'Decaying EMA '
+
+        if conditions:
+            dataframe.loc[
+                reduce(lambda x, y: x | y, conditions),
+                'sell'
+            ]=1
 
         return dataframe
 
