@@ -1,9 +1,14 @@
 # MultiMA_TSL
 
+## Update 2022-2-23
+The last free version is available as paid early access on the patreon https://www.patreon.com/stash86
+It will be live here in 2 weeks from now, so your choice whether you want to pay for it or waiting for the free version.
+
 ## Update 2022-2-22
 There will be one last free update that should be uploaded in 3 weeks. After that, I'll have it behind a paywall. The strategy getting heavy considerably that using free 3vCPU ARM Oracle VPS isn't enough anymore. For 1 run of hyperopt of 500 epochs, I would need to wait for at least 20 hours. So I'm thinking of using paid VPS. 4 CPU 8GB Memory on vultr would cost $40/month today. That's why I'm putting it behind paywall. The link to my patreon is
 https://www.patreon.com/stash86
 
+Another important update is that I change the EWO calculation to use SMA instead of SMA. It would affect all 3 versions of the strat.
 
 ## Important note!!! This strategy is developed and tested using BUSD pairs' data. So it might give better result if it's being used when BUSD is used as the stake, compared to other stake.
 
