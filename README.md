@@ -1,5 +1,8 @@
 # MultiMA_TSL
 
+## Update 2022-3-11
+Thanks for all who are/were using MultiMA_TSL. Hopefully you would get a strategy that works for you. And for those who want to follow my updates on future strats, you can folow me on https://twitter.com/Crypto_Pratama
+
 ## Update 2022-2-23
 The last free version is available as paid early access on the patreon https://www.patreon.com/stash86
 It will be live here in 2 weeks from now, so your choice whether you want to pay for it or waiting for the free version.
