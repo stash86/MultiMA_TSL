@@ -1,6 +1,6 @@
 # MultiMA_TSL
 
-Read this https://docs.google.com/document/d/10WNIbKKiZgog2VUOnAufPT2G6wv6t5nolhx0c7A66xM/edit?usp=sharing to know how to get my pay-to-download strategies
+Read this https://bit.ly/stash86FT to know how to get my pay-to-download strategies
 
 ## Update 2022-3-11
 Thanks for all who are/were using MultiMA_TSL. Hopefully you would get a strategy that works for you. And for those who want to follow my updates on future strats, you can folow me on https://twitter.com/Crypto_Pratama
