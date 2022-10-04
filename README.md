@@ -12,9 +12,12 @@ This strategy based on SMAOffsetProtectOptV1 (modded by Perkmeister), based on @
 
 Config files that I'm using on my live bot can be found here
 https://github.com/stash86/freqtrade/blob/freqtrade-develop/user_data/config.json
+https://github.com/stash86/freqtrade/blob/freqtrade-develop/user_data/config-exchange.json
 https://github.com/stash86/freqtrade/blob/freqtrade-develop/user_data/config-exchange-general.json
 https://github.com/stash86/freqtrade/blob/freqtrade-develop/user_data/config-exchange-blacklist.json
-
+https://github.com/stash86/freqtrade/blob/freqtrade-develop/user_data/config-telegram.json
+https://github.com/stash86/freqtrade/blob/freqtrade-develop/user_data/config-telegram-general.json
+https://github.com/stash86/freqtrade/blob/freqtrade-develop/user_data/config-api.json
 
 ## Affiliate links
 Vultr (you get $100 credit that expires in 14 days) https://www.vultr.com/?ref=8944192-8H
