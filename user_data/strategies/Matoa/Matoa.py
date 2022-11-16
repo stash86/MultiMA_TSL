@@ -10,6 +10,7 @@ from functools import reduce
 from freqtrade.persistence import Trade
 from datetime import datetime, timedelta, timezone
 from freqtrade.exchange import timeframe_to_prev_date
+import math
 import talib.abstract as ta
 import logging
 from logging import FATAL
