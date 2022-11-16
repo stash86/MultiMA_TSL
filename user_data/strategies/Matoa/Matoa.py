@@ -10,7 +10,6 @@ from functools import reduce
 from freqtrade.persistence import Trade
 from datetime import datetime, timedelta, timezone
 from freqtrade.exchange import timeframe_to_prev_date
-import freqtrade_strategies.custom_indicators as cis
 import talib.abstract as ta
 import logging
 from logging import FATAL
@@ -173,13 +172,13 @@ class Matoa (IStrategy):
         dataframe['live_data_ok'] = (dataframe['volume'].rolling(window=72, min_periods=72).min() > 0)
 
         if not self.optimize_buy_hma:
-            dataframe['hma_offset_buy'] = cis.tv_hma(dataframe, int(self.base_nb_candles_buy_hma.value)) *self.low_offset_hma.value
+            dataframe['hma_offset_buy'] = tv_hma(dataframe, int(self.base_nb_candles_buy_hma.value)) *self.low_offset_hma.value
 
         if not self.optimize_buy_hma2:
-            dataframe['hma_offset_buy2'] = cis.tv_hma(dataframe, int(self.base_nb_candles_buy_hma2.value)) *self.low_offset_hma2.value
+            dataframe['hma_offset_buy2'] = tv_hma(dataframe, int(self.base_nb_candles_buy_hma2.value)) *self.low_offset_hma2.value
 
         if not self.optimize_buy_hma3:
-            dataframe['hma_offset_buy3'] = cis.tv_hma(dataframe, int(self.base_nb_candles_buy_hma3.value)) *self.low_offset_hma3.value
+            dataframe['hma_offset_buy3'] = tv_hma(dataframe, int(self.base_nb_candles_buy_hma3.value)) *self.low_offset_hma3.value
 
         if not self.optimize_buy_volatility:
             df_std = dataframe['close'].rolling(int(self.buy_length_volatility.value)).std()
@@ -208,13 +207,13 @@ class Matoa (IStrategy):
         conditions = []
 
         if self.optimize_buy_hma:
-            dataframe['hma_offset_buy'] = cis.tv_hma(dataframe, int(self.base_nb_candles_buy_hma.value)) *self.low_offset_hma.value
+            dataframe['hma_offset_buy'] = tv_hma(dataframe, int(self.base_nb_candles_buy_hma.value)) *self.low_offset_hma.value
 
         if self.optimize_buy_hma2:
-            dataframe['hma_offset_buy2'] = cis.tv_hma(dataframe, int(self.base_nb_candles_buy_hma2.value)) *self.low_offset_hma2.value
+            dataframe['hma_offset_buy2'] = tv_hma(dataframe, int(self.base_nb_candles_buy_hma2.value)) *self.low_offset_hma2.value
 
         if self.optimize_buy_hma3:
-            dataframe['hma_offset_buy3'] = cis.tv_hma(dataframe, int(self.base_nb_candles_buy_hma3.value)) *self.low_offset_hma3.value
+            dataframe['hma_offset_buy3'] = tv_hma(dataframe, int(self.base_nb_candles_buy_hma3.value)) *self.low_offset_hma3.value
 
         if self.optimize_buy_volatility:
             df_std = dataframe['close'].rolling(int(self.buy_length_volatility.value)).std()
@@ -327,3 +326,46 @@ class Matoa (IStrategy):
             ] = 1
 
         return dataframe
+
+
+def tv_wma(df, length = 9) -> DataFrame:
+    """
+    Source: Tradingview "Moving Average Weighted"
+    Pinescript Author: Unknown
+    Args :
+        dataframe : Pandas Dataframe
+        length : WMA length
+        field : Field to use for the calculation
+    Returns :
+        dataframe : Pandas DataFrame with new columns 'tv_wma'
+    """
+
+    norm = 0
+    sum = 0
+
+    for i in range(1, length - 1):
+        weight = (length - i) * length
+        norm = norm + weight
+        sum = sum + df.shift(i) * weight
+
+    tv_wma = (sum / norm) if norm > 0 else 0
+    return tv_wma
+
+def tv_hma(dataframe, length = 9, field = 'close') -> DataFrame:
+    """
+    Source: Tradingview "Hull Moving Average"
+    Pinescript Author: Unknown
+    Args :
+        dataframe : Pandas Dataframe
+        length : HMA length
+        field : Field to use for the calculation
+    Returns :
+        dataframe : Pandas DataFrame with new columns 'tv_hma'
+    """
+
+    h = 2 * tv_wma(dataframe[field], math.floor(length / 2)) - tv_wma(dataframe[field], length)
+
+    tv_hma = tv_wma(h, math.floor(math.sqrt(length)))
+    # dataframe.drop("h", inplace=True, axis=1)
+
+    return tv_hma
