@@ -1,0 +1,68 @@
+============================================================= ENTER TAG STATS =============================================================
+|       TAG |   Entries |   Avg Profit % |   Cum Profit % |   Tot Profit USDT |   Tot Profit % |   Avg Duration |   Win  Draw  Loss  Win% |
+|-----------+-----------+----------------+----------------+-------------------+----------------+----------------+-------------------------|
+|       hma |       157 |           2.01 |         315.73 |           141.521 |          70.76 |        1:06:00 |   102     0    55  65.0 |
+|     hma_3 |        46 |           3.99 |         183.41 |            82.249 |          41.12 |        1:11:00 |    36     0    10  78.3 |
+| hma hma_3 |        44 |           2.00 |          87.98 |            38.965 |          19.48 |        0:40:00 |    33     0    11  75.0 |
+|     hma_2 |        29 |           2.27 |          65.83 |            29.647 |          14.82 |        1:14:00 |    17     0    12  58.6 |
+|     TOTAL |       276 |           2.37 |         652.96 |           292.381 |         146.19 |        1:04:00 |   188     0    88  68.1 |
+======================================================= EXIT REASON STATS ========================================================
+|        Exit Reason |   Exits |   Win  Draws  Loss  Win% |   Avg Profit % |   Cum Profit % |   Tot Profit USDT |   Tot Profit % |
+|--------------------+---------+--------------------------+----------------+----------------+-------------------+----------------|
+| trailing_stop_loss |      94 |     94     0     0   100 |           8.68 |         816.21 |           365.845 |         204.05 |
+|             EMA_up |      57 |     57     0     0   100 |           3.96 |         225.68 |           101.113 |          56.42 |
+|           EMA_down |      45 |      0     0    45     0 |          -4.67 |        -210.26 |           -94.279 |         -52.56 |
+|          stop_loss |      40 |      0     0    40     0 |          -8.16 |        -326.38 |          -146.728 |         -81.59 |
+|           EMA_up_3 |      32 |     30     0     2  93.8 |           3.37 |         107.73 |            48.449 |          26.93 |
+|    EMA_up EMA_up_3 |       7 |      7     0     0   100 |           5.97 |          41.76 |            18.784 |          10.44 |
+|         EMA_down_2 |       1 |      0     0     1     0 |          -1.78 |          -1.78 |            -0.803 |          -0.45 |
+======================================================= LEFT OPEN TRADES REPORT ========================================================
+|   Pair |   Entries |   Avg Profit % |   Cum Profit % |   Tot Profit USDT |   Tot Profit % |   Avg Duration |   Win  Draw  Loss  Win% |
+|--------+-----------+----------------+----------------+-------------------+----------------+----------------+-------------------------|
+|  TOTAL |         0 |           0.00 |           0.00 |             0.000 |           0.00 |           0:00 |     0     0     0     0 |
+================== SUMMARY METRICS ==================
+| Metric                      | Value               |
+|-----------------------------+---------------------|
+| Backtesting from            | 2021-09-01 00:00:00 |
+| Backtesting to              | 2022-10-15 00:00:00 |
+| Max open trades             | 4                   |
+|                             |                     |
+| Total/Daily Avg Trades      | 276 / 0.67          |
+| Starting balance            | 200 USDT            |
+| Final balance               | 492.381 USDT        |
+| Absolute profit             | 292.381 USDT        |
+| Total profit %              | 146.19%             |
+| CAGR %                      | 123.45%             |
+| Sortino                     | 9.76                |
+| Sharpe                      | 4.71                |
+| Calmar                      | 352.29              |
+| Profit factor               | 2.20                |
+| Expectancy                  | 0.38                |
+| Trades per day              | 0.67                |
+| Avg. daily profit %         | 0.36%               |
+| Avg. stake amount           | 44.815 USDT         |
+| Total trade volume          | 12368.914 USDT      |
+|                             |                     |
+| Best Pair                   | BTCST/USDT 64.03%   |
+| Worst Pair                  | ACH/USDT -21.73%    |
+| Best trade                  | FLM/USDT 22.79%     |
+| Worst trade                 | LOKA/USDT -8.18%    |
+| Best day                    | 19.935 USDT         |
+| Worst day                   | -13.832 USDT        |
+| Days win/draw/lose          | 86 / 272 / 43       |
+| Avg. Duration Winners       | 1:00:00             |
+| Avg. Duration Loser         | 1:11:00             |
+| Rejected Entry signals      | 430                 |
+| Entry/Exit Timeouts         | 0 / 0               |
+|                             |                     |
+| Min balance                 | 203.879 USDT        |
+| Max balance                 | 492.381 USDT        |
+| Max % of account underwater | 4.90%               |
+| Absolute Drawdown (Account) | 4.16%               |
+| Absolute Drawdown           | 16.047 USDT         |
+| Drawdown high               | 185.345 USDT        |
+| Drawdown low                | 169.298 USDT        |
+| Drawdown Start              | 2022-06-19 21:30:00 |
+| Drawdown End                | 2022-07-06 23:30:00 |
+| Market change               | -74.57%             |
+=====================================================

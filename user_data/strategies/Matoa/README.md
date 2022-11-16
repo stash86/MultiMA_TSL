@@ -1,0 +1,1 @@
+Strategies optimized for USDT stake. The strategies are optimized for Binance exchange, unless specified explicitly in the filename.
