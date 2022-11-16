@@ -23,9 +23,23 @@ logger = logging.getLogger(__name__)
 ###########################################################################################################
 ##                                                                                                       ##
 ##    Strategy for Freqtrade https://github.com/freqtrade/freqtrade                                      ##
-##    This strategy is available on https://patreon.com/stash86                                          ##
 ##                                                                                                       ##
 ##                                                                                                       ##
+###########################################################################################################
+##               DONATIONS for stash86                                                                   ##
+##                                                                                                       ##
+##   Real-life money : https://patreon.com/stash86                                                       ##
+##   BTC: 1FghqtgGLpD9F21BNDMje4iyj4cSzVPZPb                                                             ##
+##   ETH (ERC20): 0x689c16451889824d3d3a79ad6fc867909dc8874d                                             ##
+##   BEP20/BSC (USDT): 0x689c16451889824d3d3a79ad6fc867909dc8874d                                        ##
+##   TRC20/TRON (USDT): TKMuRHJppPok3ik2siZp2SYRdBdfdSWxrt                                               ##
+##                                                                                                       ##
+##               REFERRAL LINKS                                                                          ##
+##                                                                                                       ##
+##  Binance: https://accounts.binance.com/en/register?ref=143744527                                      ##
+##  Kucoin: https://www.kucoin.com/ucenter/signup?rcode=r3BWY2T                                          ##
+##  FTX: https://ftx.com/referrals#a=65050097                                                            ##
+##  Vultr (you get $100 credit that expires in 14 days) : https://www.vultr.com/?ref=8944192-8H          ##
 ###########################################################################################################
 
 def tv_wma(df, length = 9) -> DataFrame:
