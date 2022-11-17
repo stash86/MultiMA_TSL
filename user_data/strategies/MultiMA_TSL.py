@@ -41,7 +41,6 @@ import pandas_ta as pta
 ##                                                                                                       ##
 ##  Binance: https://accounts.binance.com/en/register?ref=143744527                                      ##
 ##  Kucoin: https://www.kucoin.com/ucenter/signup?rcode=r3BWY2T                                          ##
-##  FTX: https://ftx.com/referrals#a=65050097                                                            ##
 ##  Vultr (you get $100 credit that expires in 14 days) : https://www.vultr.com/?ref=8944192-8H          ##
 ###########################################################################################################
 
