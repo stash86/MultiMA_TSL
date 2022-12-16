@@ -2,8 +2,7 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 import numpy as np
 import talib.abstract as ta
 from freqtrade.strategy import IStrategy, informative
-from freqtrade.strategy import (merge_informative_pair,
-                                DecimalParameter, IntParameter, BooleanParameter, CategoricalParameter, stoploss_from_open)
+from freqtrade.strategy import (DecimalParameter, IntParameter, BooleanParameter, CategoricalParameter, stoploss_from_open)
 from pandas import DataFrame, Series
 from typing import Dict, List, Optional, Tuple, Union
 from functools import reduce
@@ -13,7 +12,6 @@ from freqtrade.exchange import timeframe_to_prev_date, timeframe_to_minutes
 import talib.abstract as ta
 import math
 import pandas_ta as pta
-# from finta import TA as fta
 import logging
 from logging import FATAL
 import time
@@ -103,6 +101,7 @@ class template (IStrategy):
         dataframe['live_data_ok'] = (dataframe['volume'].rolling(window=72, min_periods=72).min() > 0)
 
         if not self.optimize_buy_ema:
+            # Have the period of EMA on increment of 5 without having to use CategoricalParameter
             dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(5 * self.buy_length_ema.value)) * 0.9
 
         if not self.optimize_buy_ema2:
@@ -252,6 +251,7 @@ class template (IStrategy):
                 if (current_candle['close'] < current_candle['ema_offset_sell2']) & (previous_candle_1['close'] < previous_candle_1['ema_offset_sell2']) & (buy_offset_ema == False) & (buy_offset_ema2 == False):
                     return f"ema_down_2 ({enter_tag})"
 
+        # Specific exit logic for ema_2_strong and ema_2_weak enter tags
         if (len(dataframe) > 1):
             if any(c in ['ema_2_strong', 'ema_2_weak'] for c in enter_tags):
                 buy_offset_ema = (
