@@ -28,6 +28,8 @@ class template (IStrategy):
     INTERFACE_VERSION = 3
 
     # ROI table:
+    # ROI is used for backtest/hyperopt to not overestimating the effectiveness of trailing stoploss
+    # Remember to change this to 100000 for dry/live and turn on trailing stoploss below
     minimal_roi = {
         "0": 0.03
     }
@@ -56,6 +58,8 @@ class template (IStrategy):
     stoploss = -0.99
 
     # Trailing stop:
+    # Turned off for backtest/hyperopt to not gaming the backtest.
+    # Turn this on for dry/live
     trailing_stop = False
     trailing_stop_positive = 0.01
     trailing_stop_positive_offset = 0.03
@@ -74,13 +78,16 @@ class template (IStrategy):
 
     @informative('1d')
     def populate_indicators_1d(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        # In-strat age filter
         dataframe['age_filter_ok'] = (dataframe['volume'].rolling(window=30, min_periods=30).min() > 0)
 
+        # Drop unused columns to save memory
         drop_columns = ['open', 'high', 'low', 'close', 'volume']
         dataframe.drop(columns=dataframe.columns.intersection(drop_columns), inplace=True)
 
         return dataframe
 
+    # Use BTC indicators as informative for other pairs
     @informative('30m', 'BTC/{stake}', '{base}_{column}_{timeframe}')
     def populate_indicators_btc_30m(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
@@ -92,6 +99,7 @@ class template (IStrategy):
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         
+        # DOn't trade coins that have 0 volume candle on the past 72 candles
         dataframe['live_data_ok'] = (dataframe['volume'].rolling(window=72, min_periods=72).min() > 0)
 
         if not self.optimize_buy_ema:
@@ -140,6 +148,8 @@ class template (IStrategy):
             (dataframe['close'] < dataframe['open'])
         )
 
+        # Imitate exit signal colliding, where entry shouldn't happen when the exit signal is triggered.
+        # So this check make sure no exit logics are triggered
         ema_check = (
             (dataframe['close'] > dataframe['ema_offset_sell'])
             &
@@ -203,6 +213,8 @@ class template (IStrategy):
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
+        # No exit logic here because we want to use custom exit instead
+
         return dataframe
 
     def custom_exit(self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs) -> Optional[Union[str, bool]]:
@@ -217,7 +229,10 @@ class template (IStrategy):
             enter_tag = trade.enter_tag
         enter_tags = enter_tag.split()
 
+        # Specific exit logics for trades that have either ema_strong or ema_weak enter tag
         if any(c in ['ema_strong', 'ema_weak'] for c in enter_tags):
+
+            # Checks to mitate colliding signals. Don't exit if the entry signal is triggered
             buy_offset_ema = (
                 (current_candle['close'] < current_candle['ema_offset_buy'])
                 &
@@ -258,6 +273,7 @@ class template (IStrategy):
                 if (current_candle['close'] < current_candle['ema_offset_sell3']) & (previous_candle_1['close'] < previous_candle_1['ema_offset_sell3']) & (buy_offset_ema == False) & (buy_offset_ema2 == False):
                     return f"ema_down_2 ({enter_tag})"
 
+        # Change current profit value to be tied to latest candle's close value, so that backtest and dry/live behavior is the same
         current_profit = trade.calc_profit_ratio(current_candle['close'])
 
         timeframe_minutes = timeframe_to_minutes(self.timeframe)
