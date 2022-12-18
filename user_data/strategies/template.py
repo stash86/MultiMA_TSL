@@ -100,6 +100,11 @@ class template (IStrategy):
         # DOn't trade coins that have 0 volume candle on the past 72 candles
         dataframe['live_data_ok'] = (dataframe['volume'].rolling(window=72, min_periods=72).min() > 0)
 
+        dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
+
+        # Calculate EMA30 of RSI
+        dataframe['ema_rsi_30'] = ta.EMA(dataframe['rsi'], 30)
+
         if not self.optimize_buy_ema:
             # Have the period of EMA on increment of 5 without having to use CategoricalParameter
             dataframe['ema_offset_buy'] = ta.EMA(dataframe, int(5 * self.buy_length_ema.value)) * 0.9
