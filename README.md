@@ -1,5 +1,9 @@
 # MultiMA_TSL and Cenderawasih (successor of MultiMA)
 
+## Update 2023-03-15
+https://discord.gg/FDrYRxV5k9 is the link to my discord where I posted live discord notif of these strats:
+* Cenderawasih_30m
+
 ## Update 2022-7-13
 There will be 1 last update on MultiMA, before I retiring the name, and moving forward with Cenderawasih (simpler strat)
 Also, the kucoin version has no stoploss. So please do extensive tests before running it live. Big drawdown is expected.
