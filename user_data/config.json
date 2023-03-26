@@ -25,7 +25,7 @@
         "stoploss_on_exchange_interval": 60
     },
     "exit_pricing": {
-        "price_side": "ask",
+        "price_side": "same",
         "price_last_balance": 0.0,
         "use_order_book": false,
         "order_book_top": 1,
@@ -35,7 +35,7 @@
         }
     },
     "entry_pricing": {
-        "price_side": "bid",
+        "price_side": "other",
         "use_order_book": false,
         "order_book_min": 1,
         "order_book_max": 1
