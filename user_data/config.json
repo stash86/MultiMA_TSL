@@ -10,23 +10,23 @@
     "cancel_open_orders_on_exit": false,
     "ignore_buying_expired_candle_after" : 90,
     "unfilledtimeout": {
-        "buy": 30,
-        "sell": 10,
+        "entry": 30,
+        "exit": 10,
         "unit": "seconds"
     },
     "order_types": {
-        "buy": "market",
-        "sell": "market",
-        "forcesell": "market",
-        "emergencysell": "market",
+        "entry": "market",
+        "exit": "market",
+        "force_exit": "market",
+        "emergency_exit": "market",
         "trailing_stop_loss": "market",
         "stoploss": "market",
         "stoploss_on_exchange": false,
         "stoploss_on_exchange_interval": 60
     },
-    "bid_strategy": {
+    "exit_pricing": {
         "price_side": "ask",
-        "ask_last_balance": 0.0,
+        "price_last_balance": 0.0,
         "use_order_book": false,
         "order_book_top": 1,
         "check_depth_of_market": {
@@ -34,7 +34,7 @@
             "bids_to_ask_delta": 1
         }
     },
-    "ask_strategy": {
+    "entry_pricing": {
         "price_side": "bid",
         "use_order_book": false,
         "order_book_min": 1,
@@ -46,7 +46,10 @@
             "number_assets": 100,
             "sort_key": "quoteVolume"
         },
-        {"method": "AgeFilter", "min_days_listed": 30},
+        {
+            "method": "AgeFilter",
+            "min_days_listed": 30
+        },
         {
             "method": "VolatilityFilter",
             "lookback_days": 3,
@@ -85,7 +88,7 @@
     },
     "bot_name": "freqtrade_bot",
     "initial_state": "running",
-    "forcebuy_enable": false,
+    "force_entry_enable": false,
     "internals": {
         "process_throttle_secs": 2
     },
