@@ -1,5 +1,8 @@
 # MultiMA_TSL and Cenderawasih (successor of MultiMA)
 
+## Update 2023-07-05
+Please go to https://learncryptobot.wordpress.com/ for my articles that answers faqs around freqtrade
+
 ## Update 2023-03-15
 https://discord.gg/FDrYRxV5k9 is the link to my discord where I posted live discord notif of these strats:
 * Cenderawasih_30m
