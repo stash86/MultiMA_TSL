@@ -30,12 +30,12 @@ Kucoin https://www.kucoin.com/ucenter/signup?rcode=r3BWY2T
 
 
 ## Donation
+Github sponsor - https://github.com/sponsors/stash86/
+
 Patreon (for donation only, no extra perks) - https://patreon.com/stash86
 
-BTC: 1FghqtgGLpD9F21BNDMje4iyj4cSzVPZPb     
-
-ETH (ERC20): 0x689c16451889824d3d3a79ad6fc867909dc8874d
-
-BEP20/BSC (USDT): 0x689c16451889824d3d3a79ad6fc867909dc8874d
-
-TRC20/TRON (USDT): TKMuRHJppPok3ik2siZp2SYRdBdfdSWxrt
+##Crypto
+BTC: 1FghqtgGLpD9F21BNDMje4iyj4cSzVPZPb
+ERC20 : 0x1b7b65e64f3d944d29ba025c3ad0bb9389492370
+TRC20 : TDqRvLXwbkCkBrhdsCm7aDNhfzeJqLRr94
+BEP20 : 0x1b7b65e64f3d944d29ba025c3ad0bb9389492370
