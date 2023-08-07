@@ -270,7 +270,7 @@ class Cenderawasih_2_kucoin (IStrategy):
     timeframe = '5m'
 
     process_only_new_candles = True
-    startup_candle_count = 200
+    startup_candle_count = 999
 
     use_custom_stoploss = True
 

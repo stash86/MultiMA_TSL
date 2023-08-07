@@ -175,7 +175,7 @@ class Cenderawasih_30m (IStrategy):
     timeframe = '30m'
 
     process_only_new_candles = True
-    startup_candle_count = 300
+    startup_candle_count = 999
 
     timeframe_minutes = timeframe_to_minutes(timeframe)
     timeframe_minutes_string = f"{timeframe_minutes}m"

@@ -153,7 +153,7 @@ class Matoa (IStrategy):
     timeframe = '5m'
 
     process_only_new_candles = True
-    startup_candle_count = 300
+    startup_candle_count = 999
 
     age_filter = 30
 

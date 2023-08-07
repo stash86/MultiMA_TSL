@@ -224,7 +224,7 @@ class Cenderawasih_2 (IStrategy):
     timeframe = '5m'
 
     process_only_new_candles = True
-    startup_candle_count = 200
+    startup_candle_count = 999
 
     age_filter = 30
 
