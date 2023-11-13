@@ -32,7 +32,7 @@ Kucoin https://www.kucoin.com/ucenter/signup?rcode=r3BWY2T
 ## Donation
 Github sponsor - https://github.com/sponsors/stash86/
 
-Patreon (for donation only, no extra perks) - https://patreon.com/stash86
+Patreon (get access to premium version of [ft-dashboard](https://github.com/stash86/ft-dashboard)) - https://patreon.com/stash86
 
 ## Crypto
 BTC: 1FghqtgGLpD9F21BNDMje4iyj4cSzVPZPb
