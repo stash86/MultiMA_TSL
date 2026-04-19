@@ -24,10 +24,3 @@ Binance.com (Non-US citizen) https://accounts.binance.com/en/register?ref=143744
 
 ## Donation
 Github sponsor - https://github.com/sponsors/stash86/
-
-
-## Crypto
-BTC: 1FghqtgGLpD9F21BNDMje4iyj4cSzVPZPb
-ERC20 : 0x1b7b65e64f3d944d29ba025c3ad0bb9389492370
-TRC20 : TDqRvLXwbkCkBrhdsCm7aDNhfzeJqLRr94
-BEP20 : 0x1b7b65e64f3d944d29ba025c3ad0bb9389492370
